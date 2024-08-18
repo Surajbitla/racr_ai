@@ -60,6 +60,7 @@ class WrappedModel(torch.nn.Module):
         self,
         *args,
         config_path=None,
+        weights_path=None,
         master_dict: Union[MasterDict, None] = None,
         flush_buffer_size: int = 100,
         **kwargs,
@@ -76,7 +77,7 @@ class WrappedModel(torch.nn.Module):
         # assigns config vars to the wrapper
         self.__dict__.update(read_model_config(config_path))
         self.training = True if self.mode in ["train", "training"] else False
-        self.model = model_selector(self.model_name)
+        self.model = model_selector(self.model_name, weights_path)
         self.drop_save_dict = self._find_save_layers()
         self.flush_buffer_size = flush_buffer_size
         # self.selected_out = OrderedDict()  # could be useful for skips
