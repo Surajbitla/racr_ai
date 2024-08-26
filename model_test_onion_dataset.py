@@ -142,9 +142,9 @@ split_layer = 5
 
 with torch.no_grad():
     for input_tensor, original_image, image_files in tqdm(data_loader, desc=f"Testing split at layer {split_layer}"):
-        out, layer_outputs = m(input_tensor, end=split_layer)
+        res = m(input_tensor, end=split_layer)
         logging.info("Switched.")
-        out, layer_outputs = m2(out, start=split_layer)
+        out = m2(res, start=split_layer)
 
         detections = postprocess(out, original_image[0].size)
         print(f"Detections for {image_files[0]}:", detections)
