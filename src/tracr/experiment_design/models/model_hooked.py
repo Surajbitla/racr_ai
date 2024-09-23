@@ -75,7 +75,7 @@ class WrappedModel(torch.nn.Module):
         )  # collation dict for the current partition of a given inference
         self.forward_dict = {}  # dict for the results from the current forward pass
         # assigns config vars to the wrapper
-        self.__dict__.update(read_model_config(config_path))
+        self.__dict__.update(read_model_config(config_path, participant_key = kwargs.get('participant_key', 'client')))
         self.training = True if self.mode in ["train", "training"] else False
         self.model = model_selector(self.model_name, weights_path)
         self.drop_save_dict = self._find_save_layers()
@@ -205,7 +205,7 @@ class WrappedModel(torch.nn.Module):
                     self.banked_input = layer_input[
                         0
                     ]()  # wrapped dict expected, deepcopy may help
-                    hook_output = torch.randn(1, *self.input_size)
+                    hook_output = torch.randn(1, *self.input_size).to(self.device)
             elif (
                 fixed_layer_i in self.drop_save_dict
                 or self.model_start_i == fixed_layer_i
@@ -350,10 +350,10 @@ class WrappedModel(torch.nn.Module):
             raise ValueError(f"Bad input given to WrappedModel: type {type(_input)}")
         if (
             torch.cuda.is_available()
-            and self.mode == "cuda"
-            and input_tensor.device != self.mode
+            and self.device == "cuda"
+            and input_tensor.device != self.device
         ):
-            input_tensor = input_tensor.to(self.mode)
+            input_tensor = input_tensor.to(self.device)
         return input_tensor
 
     def warmup(self, iterations=50, force=False):
@@ -364,7 +364,7 @@ class WrappedModel(torch.nn.Module):
             logger.info("Starting warmup.")
             with torch.no_grad():
                 for _ in range(iterations):
-                    self(torch.randn(1, *self.input_size), log=False)
+                    self(torch.randn(1, *self.input_size).to(self.device), log=False)
             logger.info("Warmup complete.")
 
     def prune_layers(self, newlow, newhigh):

@@ -15,17 +15,11 @@ yaml_file_path = os.path.join(
     str(Path(__file__).resolve().parents[0]), "model_test.yaml"
 )
 weight_path = 'runs/detect/train16/weights/best.pt'
-
-# Set device (GPU if available)
-# Not working
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Working
-# device = "cpu"
-
 # Initialize models and move to device
-m = WrappedModel(config_path=yaml_file_path, weights_path=weight_path).to(device)
-m2 = WrappedModel(config_path=yaml_file_path, weights_path=weight_path).to(device)
+m = WrappedModel(config_path=yaml_file_path, weights_path=weight_path)
+m2 = WrappedModel(config_path=yaml_file_path, weights_path=weight_path, participant_key = 'server')
 class_names = ["with_weeds", "without_weeds"]
 
 def load_image(image_path):
@@ -38,7 +32,7 @@ def load_image(image_path):
         preprocess_image = transforms.Compose([
             transforms.Resize((640, 640)),
         ])
-        image_tensor = preprocess(image).unsqueeze(0).to(device)  # Ensure the tensor is on the correct device
+        image_tensor = preprocess(image).unsqueeze(0)
         new_image = preprocess_image(image)
         print("Image loaded and preprocessed successfully.")
         return image_tensor, new_image
@@ -47,16 +41,25 @@ def load_image(image_path):
 
 test_image_path = "./onion/testing/05_DSC_0119_3.jpg"
 input_tensor, original_image = load_image(test_image_path)
-
-# Make sure the input tensor is on the same device as the model
-input_tensor = input_tensor.to(device)
-
+input_tensor = input_tensor.to(m.device)
 # Perform forward pass, ensuring all outputs are also on the correct device
 layer_num = 5
 logging.info(f"Switch at: {layer_num}")
 res = m(input_tensor, end=layer_num)
+# Assuming `res` is the NotDict object
+if isinstance(res, NotDict):
+    inner_dict = res.inner_dict  # Access the inner dictionary
+    # Move all tensors in the dictionary to the correct device
+    for key in inner_dict:
+        if isinstance(inner_dict[key], torch.Tensor):
+            inner_dict[key] = inner_dict[key].to(m2.device)  # Move tensors to the correct device
+            print(f"Intermediate tensors of {key} moved to the correct device.")
+else:
+    print("res is not an instance of NotDict")
+
+# Now, pass the updated res to m2
 logging.info("Switched.")
-out = m2(res, start=layer_num)
+out = m2(res, start=layer_num)  # Pass the inner dict to m2
 
 def postprocess(outputs, original_img_size, conf_threshold=0.25, iou_threshold=0.45):
     if isinstance(outputs, tuple):
