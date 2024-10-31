@@ -32,13 +32,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 yaml_file_path = os.path.join(str(Path(__file__).resolve().parents[0]), "model_test.yaml")
 model = WrappedModel(config_path=yaml_file_path, weights_path=weight_path, participant_key = 'server')
 
-# def decompress_data(compressed_data):
-#     decompressed_data = zlib.decompress(compressed_data)
-#     data = pickle.loads(decompressed_data)
-#     return data
+def decompress_data_lossless(compressed_data):
+    decompressed_data = zlib.decompress(compressed_data)
+    data = pickle.loads(decompressed_data)
+    return data
 
 # Blosc2 Decompression
-def decompress_data(compressed_data):
+def decompress_data_lossy(compressed_data):
     decompressed_data = blosc2.decompress(compressed_data)
     data = pickle.loads(decompressed_data)
     return data
@@ -121,6 +121,14 @@ model.eval()
 # Server Code Snippet for Processing Each Image
 try:
     while True:
+        # Receive mode length and mode string
+        mode_length_bytes = conn.recv(4)
+        if not mode_length_bytes:
+            break
+        mode_length = int.from_bytes(mode_length_bytes, 'big')
+        mode = conn.recv(mode_length).decode('utf-8')  # Decode the mode
+        print(f"Received mode: {mode}")
+
         # Receiving split layer index
         split_layer_index_bytes = conn.recv(4)
         if not split_layer_index_bytes:
@@ -135,7 +143,12 @@ try:
         compressed_data = receive_full_message(conn, expected_length)
  
         # Assuming decompress_data function returns the deserialized object
-        received_data = decompress_data(compressed_data)
+        if mode == "lossless":
+            received_data = decompress_data_lossless(compressed_data)
+        elif mode == "lossy":
+            received_data = decompress_data_lossy(compressed_data)
+        else:
+            raise ValueError(f"Unknown mode received: {mode}")
 
         # Unpack the received data
         out, original_img_size = received_data
