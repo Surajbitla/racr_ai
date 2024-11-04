@@ -36,7 +36,7 @@ def load_image(image_path):
     except Exception as e:
         print(f"Error in loading or preprocessing image: {e}")
 
-test_image_path = "./onion/testing/05_DSC_0119_3.jpg"
+test_image_path = "C:/Users/natsu/OneDrive/Documents/Rowan/Work/Encode_Decode/Summer/Paolo/Yolov8/onion_balanced/onion_train_test/testing/images/testval/03_3_2.jpg"
 input_tensor, original_image = load_image(test_image_path)
 
 layer_num = 5
@@ -46,7 +46,7 @@ logging.info("Switched.")
 out= m2(res, start=layer_num)
 # print('result', out)
 
-def postprocess(outputs, original_img_size, conf_threshold=0.25, iou_threshold=0.45):
+def postprocess(outputs, original_img_size, conf_threshold=0.5, iou_threshold=0.45):
     """
     Performs post-processing on the model's output to extract bounding boxes, scores, and class IDs.
 
@@ -131,17 +131,10 @@ def postprocess(outputs, original_img_size, conf_threshold=0.25, iou_threshold=0
 detections = postprocess(out, original_image.size)
 print("Detections:", detections)
 
-def draw_detections(image, detections, class_names):
+def draw_detections(image, detections, class_names, padding=2):
     """
     Draws bounding boxes and labels on the input image based on the detected objects.
-
-    Args:
-        image (PIL.Image): The input image to draw detections on.
-        detections (list): List of detections with bounding boxes, scores, and class IDs.
-        class_names (list): List of class names.
-
-    Returns:
-        PIL.Image: The image with detections drawn on it.
+    Adds moderate padding to ensure text labels are clearly visible.
     """
     draw = ImageDraw.Draw(image)
     font = ImageFont.load_default()
@@ -154,9 +147,23 @@ def draw_detections(image, detections, class_names):
         color = 'red'
         draw.rectangle([x1, y1, x2, y2], outline=color, width=2)
         label = f"{class_names[class_id]}: {score:.2f}"
+        
+        # Determine the position for the label text
         text_size = draw.textbbox((0, 0), label, font)
-        draw.rectangle([x1, y1 - text_size[3], x1 + text_size[2], y1], fill=color)
-        draw.text((x1, y1 - text_size[3]), label, fill=(255, 255, 255), font=font)
+        text_width = text_size[2]
+        text_height = text_size[3]
+        
+        # Adjust the label position if it goes outside the image boundary
+        label_x = x1
+        label_y = y1 - text_height - padding if y1 - text_height - padding > 0 else y1 + h + padding
+        
+        # Ensure the text doesn't overflow beyond the right boundary
+        if label_x + text_width > image.width:
+            label_x = image.width - text_width
+        
+        # Draw the label background with adjusted padding and text
+        draw.rectangle([label_x, label_y - text_height - padding, label_x + text_width, label_y], fill=color)
+        draw.text((label_x, label_y - text_height - padding), label, fill=(255, 255, 255), font=font)
 
     return image
 
@@ -165,5 +172,5 @@ output_image = draw_detections(original_image, detections, class_names)
 output_image.show()
 
 # Save the image with detections
-# output_image.save("output_with_detections_split.jpg")
+output_image.save("output_with_detections_split.jpg")
 print("Detections drawn and image saved as output_with_detections_split.jpg.")

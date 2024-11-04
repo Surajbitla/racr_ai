@@ -61,7 +61,7 @@ data_loader = DataLoader(dataset, batch_size=1, shuffle=False, collate_fn=custom
 # Initialize the YOLO model
 yaml_file_path = os.path.join(str(Path(__file__).resolve().parents[0]), "model_test.yaml")
 m = WrappedModel(config_path=yaml_file_path, weights_path=weight_path)
-m2 = WrappedModel(config_path=yaml_file_path, weights_path=weight_path, participant_key = 'server')
+m2 = WrappedModel(config_path=yaml_file_path, weights_path=weight_path)
 
 
 def postprocess(outputs, original_img_size, conf_threshold=0.25, iou_threshold=0.45):

@@ -113,7 +113,9 @@ class WrappedModel(torch.nn.Module):
         """Interrogate the model to find skip connections.
         Requires the model to have knowledge of its structure (for now)."""
         drop_save_dict = {}
-        drop_save_dict = self.model.save if self.model.save else {}
+        # drop_save_dict = self.model.save if self.model.save else {}
+        drop_save_dict = getattr(self.model, 'save', {})
+
         return drop_save_dict
 
     def _walk_modules(self, module_generator, depth, walk_i):
